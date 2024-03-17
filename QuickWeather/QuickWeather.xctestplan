@@ -1,0 +1,39 @@
+{
+  "configurations" : [
+    {
+      "id" : "1E3ADD17-B6E0-48FE-AC89-2A182A8353A2",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:QuickWeather.xcodeproj",
+      "identifier" : "78CEF9F523A0A02900052085",
+      "name" : "QuickWeather"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:QuickWeather.xcodeproj",
+        "identifier" : "78CEFA0B23A0A02A00052085",
+        "name" : "QuickWeatherTests"
+      }
+    },
+    {
+      "enabled" : false,
+      "skippedTests" : [
+        "QuickWeatherUITests"
+      ],
+      "target" : {
+        "containerPath" : "container:QuickWeather.xcodeproj",
+        "identifier" : "78CEFA1623A0A02A00052085",
+        "name" : "QuickWeatherUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

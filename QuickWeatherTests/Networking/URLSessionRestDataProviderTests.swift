@@ -11,12 +11,12 @@ import XCTest
 
 class URLSessionRestDataProviderTests: XCTestCase {
   
+  
   private var mockURLSessionWrapper: MockURLSessionWrapper!
   private var urlSessionRestDataProvider: RestDataProviderImpl!
   
-  let testURL = URL(string: "http://example.com")!
-  let responseBody = Data(base64Encoded: "adfaafeaerga")!
-  
+  private let testURL = URL(string: "http://example.com")!
+
   override func setUp() {
     mockURLSessionWrapper = MockURLSessionWrapper()
     urlSessionRestDataProvider = RestDataProviderImpl(urlSessionWrapper: mockURLSessionWrapper)
@@ -25,84 +25,45 @@ class URLSessionRestDataProviderTests: XCTestCase {
   func test_getURLCompletionHandler_statusCode200() async throws {
     
     let responseStatusCode = 200
-    
-    mockURLSessionWrapper.dataTaskReturn = (
-      self.responseBody,
-      HTTPURLResponse(
-        url: self.testURL,
-        statusCode: responseStatusCode,
-        httpVersion: nil,
-        headerFields: nil
-      )!
-    )
+    mockURLSessionWrapper.setupWithResponse(url: testURL, statusCode: responseStatusCode)
     
     let restDataProviderResponse = try await urlSessionRestDataProvider.get(url: testURL)
     
-    XCTAssertEqual(mockURLSessionWrapper.dataTaskRequest!.url, self.testURL)
-    XCTAssertEqual(mockURLSessionWrapper.dataTaskRequest!.httpMethod, "GET")
+    mockURLSessionWrapper.assertRequest(url: testURL, httpMethod: "GET")
     
     XCTAssertEqual(restDataProviderResponse.statusCode, responseStatusCode)
-    XCTAssertEqual(restDataProviderResponse.body, self.responseBody)
+    XCTAssertEqual(restDataProviderResponse.body, mockURLSessionWrapper.responseBody)
   }
   
   func test_getURLCompletionHandler_statusCode400() async throws {
     
     let responseStatusCode = 400
-    
-    mockURLSessionWrapper.dataTaskReturn = (
-      self.responseBody,
-      HTTPURLResponse(
-        url: self.testURL,
-        statusCode: responseStatusCode,
-        httpVersion: nil,
-        headerFields: nil
-      )!
-    )
-    
+    mockURLSessionWrapper.setupWithResponse(url: testURL, statusCode: responseStatusCode)
+
     do {
       let _ = try await urlSessionRestDataProvider.get(url: testURL)
     } catch let error as RestDataProviderError {
       switch error {
       case .errorStatusCode(let restDataProviderResponse):
         XCTAssertEqual(restDataProviderResponse.statusCode, responseStatusCode)
-        XCTAssertEqual(restDataProviderResponse.body, self.responseBody)
+        XCTAssertEqual(restDataProviderResponse.body, mockURLSessionWrapper.responseBody)
       case .error(_):
         XCTFail()
       }
     }
 
-    XCTAssertEqual(mockURLSessionWrapper.dataTaskRequest!.url, self.testURL)
-    XCTAssertEqual(mockURLSessionWrapper.dataTaskRequest!.httpMethod, "GET")
+    mockURLSessionWrapper.assertRequest(url: testURL, httpMethod: "GET")
   }
   
   func test_getURLCompletionHandler_withUnderlyingError() async {
     
-    let fakeError = FakeError()
-
-    mockURLSessionWrapper.dataTaskError = fakeError
+    mockURLSessionWrapper.setupWithError()
 
     do {
       let _ = try await urlSessionRestDataProvider.get(url: testURL)
       XCTFail("urlSessionRestDataProvider.get(url: testURL) must throw")
     } catch {
-      XCTAssert((error as? FakeError) === fakeError)
+      XCTAssert((error as? FakeError) === mockURLSessionWrapper.fakeError)
     }
   }
 }
-
-private class MockURLSessionWrapper: URLSessionWrapper {
-  
-  var dataTaskRequest: URLRequest?
-  var dataTaskError: Error?
-  var dataTaskReturn: (Data, URLResponse)!
-  
-  func dataTask(request: URLRequest) async throws -> (Data, URLResponse) {
-    dataTaskRequest = request
-    if let dataTaskError {
-      throw dataTaskError
-    }
-    return dataTaskReturn
-  }
-}
-
-private class FakeError: Error { }

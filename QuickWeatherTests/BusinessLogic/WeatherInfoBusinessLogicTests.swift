@@ -36,11 +36,8 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
       expectation.fulfill()
     }
     
-    mockWeatherDataProvider.fetchPeriodicWeatherForecastReturn
-      = testFetchPeriodicWeatherForecastReturnTest
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid1"] = testImageData1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid2"] = testImageData2
-
+    mockWeatherDataProvider.setupWithBasicResponse()
+    
     weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
     
     wait(for: [expectation], timeout: 3)
@@ -62,18 +59,15 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
       }
     }
     
-    mockWeatherDataProvider.fetchPeriodicWeatherForecastReturn
-      = testFetchPeriodicWeatherForecastReturnTest
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid1"] = testImageData1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid2"] = testImageData2
+    mockWeatherDataProvider.setupWithBasicResponse()
 
     weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
     
     wait(for: [expectation], timeout: 3)
     
     let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, testImageData2)
+    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
   }
 
   func test_fetchWeatherInfo_cacheTest1() throws {
@@ -91,27 +85,25 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
       }
     }
     
-    mockWeatherDataProvider.fetchPeriodicWeatherForecastReturn
-      = testFetchPeriodicWeatherForecastReturnTestForCacheTest1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid1"] = testImageData1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid2"] = testImageData2
-
+    mockWeatherDataProvider.setupWithForcastPreriodsWithIdenticalIcons()
+    
     weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
     
     wait(for: [expectation], timeout: 3)
     
     let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, testImageData2)
-    XCTAssertEqual(lastForecast?.periods[2].iconData, testImageData2)
-    XCTAssertEqual(mockWeatherDataProvider.fetchWeatherIconIconIdentifier.count, 2)
+    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
+    XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
+    
+    mockWeatherDataProvider.assertIconRequest(count: 2)
   }
 
   func test_fetchWeatherInfo_cacheTest2() async throws {
     let cityName = "Leeds"
     
-    await iconCache.set(icon: testImageData1, key: "iid1")
-    await iconCache.set(icon: testImageData2, key: "iid2")
+    await iconCache.set(icon: mockWeatherDataProvider.testImageData1, key: "iid1")
+    await iconCache.set(icon: mockWeatherDataProvider.testImageData2, key: "iid2")
 
     let expectation = self.expectation(description: "delegate method has been called")
     expectation.assertForOverFulfill = false
@@ -126,64 +118,19 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
       }
     }
     
-    mockWeatherDataProvider.fetchPeriodicWeatherForecastReturn
-      = testFetchPeriodicWeatherForecastReturnTestForCacheTest1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid1"] = testImageData1
-    mockWeatherDataProvider.fetchWeatherIconReturn["iid2"] = testImageData2
+    mockWeatherDataProvider.setupWithForcastPreriodsWithIdenticalIcons()
 
     weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
     
     await fulfillment(of: [expectation], timeout: 3)
     
     let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, testImageData2)
-    XCTAssertEqual(lastForecast?.periods[2].iconData, testImageData2)
-    XCTAssertEqual(mockWeatherDataProvider.fetchWeatherIconIconIdentifier.count, 0)
+    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
+    XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
+    mockWeatherDataProvider.assertIconRequest(count: 0)
   }
 
-  var testFetchPeriodicWeatherForecastReturnTest: PeriodicWeatherForecast {
-    .init(periods: [
-      WeatherForecastPeriod(
-        temperature: 21.3,
-        date: Date(timeIntervalSince1970: 1),
-        iconIdentifier: "iid1"
-      ),
-      WeatherForecastPeriod(
-        temperature: 22.3,
-        date: Date(timeIntervalSince1970: 2),
-        iconIdentifier: "iid2"
-      ),
-    ])
-  }
-
-  var testFetchPeriodicWeatherForecastReturnTestForCacheTest1: PeriodicWeatherForecast {
-    .init(periods: [
-      WeatherForecastPeriod(
-        temperature: 21.3,
-        date: Date(timeIntervalSince1970: 1),
-        iconIdentifier: "iid1"
-      ),
-      WeatherForecastPeriod(
-        temperature: 22.3,
-        date: Date(timeIntervalSince1970: 2),
-        iconIdentifier: "iid2"
-      ),
-      WeatherForecastPeriod(
-        temperature: 23.3,
-        date: Date(timeIntervalSince1970: 3),
-        iconIdentifier: "iid2"
-      ),
-    ])
-  }
-
-  var testImageData1: Data {
-    "image_data1".data(using: .utf8)!
-  }
-  
-  var testImageData2: Data {
-    "image_data2".data(using: .utf8)!
-  }
 }
 
 class WeatherInfoBusinessLogicDelegateTestImpl: WeatherInfoBusinessLogicDelegate {
@@ -203,27 +150,3 @@ class WeatherInfoBusinessLogicDelegateTestImpl: WeatherInfoBusinessLogicDelegate
   }
 }
 
-class MockWeatherDataProvider: WeatherDataProvider {
-  
-  var fetchPeriodicWeatherForecastCityName: String?
-  var fetchPeriodicWeatherForecastError: Error?
-  var fetchPeriodicWeatherForecastReturn: PeriodicWeatherForecast!
-  func fetchPeriodicWeatherForecast(cityName: String) async throws -> PeriodicWeatherForecast {
-    fetchPeriodicWeatherForecastCityName = cityName
-    if let fetchPeriodicWeatherForecastError {
-      throw fetchPeriodicWeatherForecastError
-    }
-    return fetchPeriodicWeatherForecastReturn;
-  }
-  
-  var fetchWeatherIconIconIdentifier: [String] = []
-  var fetchWeatherIconError: Error?
-  var fetchWeatherIconReturn: [String: Data] = [:]
-  func fetchWeatherIcon(iconIdentifier: String) async throws -> Data {
-    fetchWeatherIconIconIdentifier.append(iconIdentifier)
-    if let fetchWeatherIconError {
-      throw fetchWeatherIconError
-    }
-    return fetchWeatherIconReturn[iconIdentifier]!
-  }
-}
