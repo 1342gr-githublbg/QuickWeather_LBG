@@ -167,7 +167,7 @@
 			isa = PBXGroup;
 			children = (
 				7853E2E223A6AFF00070672C /* CitySelectorScreen */,
-				78CEFA2923A0A17A00052085 /* WeatterInfoScreen */,
+				78CEFA2923A0A17A00052085 /* WeatherInfoScreen */,
 				78CEFA4923A3EDF400052085 /* BusinessLogic */,
 				78CEFA2A23A0A36C00052085 /* OpenWeatherMapAPI */,
 				78CEFA2B23A0A60A00052085 /* Networking */,
@@ -206,12 +206,12 @@
 			path = QuickWeatherUITests;
 			sourceTree = "<group>";
 		};
-		78CEFA2923A0A17A00052085 /* WeatterInfoScreen */ = {
+		78CEFA2923A0A17A00052085 /* WeatherInfoScreen */ = {
 			isa = PBXGroup;
 			children = (
 				0024F9A12BA7A5F000B80F83 /* WeatherInfoView.swift */,
 			);
-			path = WeatterInfoScreen;
+			path = WeatherInfoScreen;
 			sourceTree = "<group>";
 		};
 		78CEFA2A23A0A36C00052085 /* OpenWeatherMapAPI */ = {
