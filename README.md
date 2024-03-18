@@ -10,15 +10,13 @@ It requires an API key which is **not** provided in the public repository. Never
 static let apiKey = "insert_your_key_here"
 ```
 
-This has been developed as a test around the end of 2019, and has recently been updated to the use the new Swift concurrency model. Moreover I am planning to move some of the ui to SwiftUI.
+This has been developed as a test around the end of 2019, and has recently been updated to the use the new Swift concurrency model and partially to SwiftUI.
+
+The app has 2 screens: one where the user can choose a city and a second that shows the wether info for the selected city. The city selector screen was not part of the requirements of this project, and hence not much attention has been paid to it. It has been created with the minimum amount of effort and code quality could be improved.
 
 ## Code structure
 
-The project follows somehow the MVVM-C architecture, with the view model being placed in the same Xcode group as the controller and the views for a certain screen. The app has 2 screens: one where the user can choose a city and a second that shows the wether info for the selected city. The city selector screen was not part of the requirements of this project, and hence not much attention has been paid to it. It has been created with the minimum amount of effort and code quality could be improved.
-
-Currently both afore mentioned screens are in the same storyboard. It is beneficial (especially when working in large teams) to split large storyboards in smaller ones, and in this case perhaps the weather info view controller scene could be moved in it's own storyboard. Or **SwiftUI** is an even better alternative.
-
-The weather info screen, which covers the requirements, is a better example of code.  It uses some iOS 13 features such as `UICollectionViewDiffableDataSource` and  `UICollectionViewCompositionalLayout`. 
+The project implements mostly a clean architecture (as described in Robert C. Martin's book). The view and view models are managed by the presenter. The later uses the Interactor to obtained from a factory to call into the business logic. The for the network communication the business logic provides abstractions. It is the networking layer that needs to conform to these abstractions so it can be injected int he business logic by the coordinator. 
 
 ## Components
 
@@ -28,7 +26,7 @@ In order to avoid multiple singletons a coordinator is used. It contains most of
 
 ### UI layer
 
-It includes view models which depend on the Business Logic or abstractions thereof. 
+It includes views, view models and presenter which depend on the Business Logic or abstractions thereof. 
 
 ### Business logic
 

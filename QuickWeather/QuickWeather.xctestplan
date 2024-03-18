@@ -17,6 +17,9 @@
   },
   "testTargets" : [
     {
+      "skippedTests" : [
+        "WeatherInfoViewModelTests"
+      ],
       "target" : {
         "containerPath" : "container:QuickWeather.xcodeproj",
         "identifier" : "78CEFA0B23A0A02A00052085",

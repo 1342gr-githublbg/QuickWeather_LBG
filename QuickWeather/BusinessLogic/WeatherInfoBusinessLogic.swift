@@ -8,12 +8,10 @@
 
 import Foundation
 
-final class WeatherInfoBusinessLogicImplementation {
+final class WeatherInfoBusinessLogic {
 
   private let weatherDataProvider: WeatherDataProvider
   private let iconCache: IconCache
-
-  weak var delegate: WeatherInfoBusinessLogicDelegate?
   
   private var iconFetcher: IconFetcher?
 
@@ -21,26 +19,26 @@ final class WeatherInfoBusinessLogicImplementation {
     self.weatherDataProvider = weatherDataProvider
     self.iconCache = iconCache
   }
-}
 
-extension WeatherInfoBusinessLogicImplementation: WeatherInfoBusinessLogic {
-  func fetchWeatherInfo(cityName: String) {
-    Task {
-      await iconFetcher?.cancelFetch()
-      do {
-        let forecast
-          = try await weatherDataProvider.fetchPeriodicWeatherForecast(cityName: cityName)
-        self.delegate?.weatherInfoBusinessLogicDidFetch(periodicWeatherForecast: forecast)
-        let iconFetcher = IconFetcher(
-          weatherDataProvider: weatherDataProvider,
-          cache: iconCache,
-          periodicWeatherForecast: forecast,
-          delegate: delegate
-        )
-        self.iconFetcher = iconFetcher
-        await iconFetcher.fetchIcons()
-      } catch {
-        self.delegate?.weatherInfoBusinessLogicError(error)
+  func fetchWeatherForecast(cityName: String) -> AsyncThrowingStream<PeriodicWeatherForecast, Error> {
+    AsyncThrowingStream<PeriodicWeatherForecast, Error> { continuation in
+      Task {
+        await iconFetcher?.cancelFetch()
+        do {
+          let forecast
+            = try await weatherDataProvider.fetchPeriodicWeatherForecast(cityName: cityName)
+          continuation.yield(forecast)
+          let iconFetcher = IconFetcher(
+            weatherDataProvider: weatherDataProvider,
+            cache: iconCache,
+            periodicWeatherForecast: forecast,
+            continuation: continuation
+          )
+          self.iconFetcher = iconFetcher
+          await iconFetcher.fetchIcons()
+        } catch {
+          continuation.finish(throwing: error)
+        }
       }
     }
   }
@@ -50,28 +48,30 @@ extension WeatherInfoBusinessLogicImplementation: WeatherInfoBusinessLogic {
 
 private actor IconFetcher {
   
-  typealias ContinuationType = CheckedContinuation<(), Error>
+  typealias ContinuationType = AsyncThrowingStream<PeriodicWeatherForecast, Error>.Continuation
   
   private(set) var task: Task<Void, Never>?
   
   private var periodicWeatherForecast: PeriodicWeatherForecast
-  private var delegate: WeatherInfoBusinessLogicDelegate?
+  private let continuation: ContinuationType
   
   private let weatherDataProvider: WeatherDataProvider
   private let cache: IconCache
   
   private var downloadsSet: Set<String> = []
   
+  private var recoverableErrors: [Error] = []
+  
   init(
     weatherDataProvider: WeatherDataProvider,
     cache: IconCache,
     periodicWeatherForecast: PeriodicWeatherForecast,
-    delegate: WeatherInfoBusinessLogicDelegate?
+    continuation: ContinuationType
   ) {
     self.weatherDataProvider = weatherDataProvider
     self.cache = cache
     self.periodicWeatherForecast = periodicWeatherForecast
-    self.delegate = delegate
+    self.continuation = continuation
   }
     
   func fetchIcons() {
@@ -85,6 +85,11 @@ private actor IconFetcher {
             }
           }
         }
+      }
+      if recoverableErrors.count > 0 {
+        continuation.finish(throwing: WeatherForecastError.recoverableError(underlyingErrors: recoverableErrors))
+      } else {
+        continuation.finish()
       }
       task = nil
     }
@@ -114,7 +119,7 @@ private actor IconFetcher {
       if Task.isCancelled { return }
       setIconAndCallback(iconId: iconId, icon: iconData)
     } catch {
-      delegate?.weatherInfoBusinessLogicError(error)
+      recoverableErrors.append(error)
     }
     
   }
@@ -150,6 +155,6 @@ private actor IconFetcher {
       }
     )
     periodicWeatherForecast = newPeriodicWeatherForecast
-    delegate?.weatherInfoBusinessLogicDidFetch(periodicWeatherForecast: periodicWeatherForecast)
+    continuation.yield(periodicWeatherForecast)
   }
 }

@@ -12,19 +12,16 @@ import XCTest
 class WeatherInfoBusinessLogicTests: XCTestCase {
   
   private var mockWeatherDataProvider: MockWeatherDataProvider!
-  private var delegate: WeatherInfoBusinessLogicDelegateTestImpl!
   private var iconCache: IconCache!
   private var weatherInfoBusinessLogic: WeatherInfoBusinessLogic!
   
   override func setUp() {
     mockWeatherDataProvider = MockWeatherDataProvider()
-    delegate = WeatherInfoBusinessLogicDelegateTestImpl()
     iconCache = IconCache()
-    weatherInfoBusinessLogic = WeatherInfoBusinessLogicImplementation(
+    weatherInfoBusinessLogic = WeatherInfoBusinessLogic(
       weatherDataProvider: mockWeatherDataProvider,
       iconCache: iconCache
     )
-    weatherInfoBusinessLogic.delegate = delegate
   }
   
   func test_fetchWeatherInfo() throws {
@@ -32,71 +29,64 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
     
     let expectation = self.expectation(description: "delegate method has been called")
     expectation.assertForOverFulfill = false
-    delegate.weatherInfoBusinessLogicDidFetchTestCallback = {
-      expectation.fulfill()
-    }
     
     mockWeatherDataProvider.setupWithBasicResponse()
     
-    weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
+    Task {
+      let forecastStream = weatherInfoBusinessLogic.fetchWeatherForecast(cityName: cityName)
+      for try await _ in forecastStream {
+        expectation.fulfill()
+      }
+    }
     
     wait(for: [expectation], timeout: 3)
-    
-    XCTAssert(delegate.periodicWeatherForecasts.count > 0)
   }
   
   func test_fetchWeatherInfo_withIcons() throws {
     let cityName = "Leeds"
     
-    let expectation = self.expectation(description: "delegate method has been called")
-    delegate.weatherInfoBusinessLogicDidFetchTestCallback = {
-      let lastForecast = self.delegate.periodicWeatherForecasts.last
-      if
-        lastForecast?.periods[0].iconData != nil &&
-        lastForecast?.periods[1].iconData != nil
-      {
-        expectation.fulfill()
-      }
-    }
+    let expectation = self.expectation(description: "async stream has finished")
     
     mockWeatherDataProvider.setupWithBasicResponse()
 
-    weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
+    Task {
+      let forecastStream = weatherInfoBusinessLogic.fetchWeatherForecast(cityName: cityName)
+      var lastForecast: PeriodicWeatherForecast? = nil
+      for try await forecast in forecastStream {
+        lastForecast = forecast
+      }
+      XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+      XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
+      expectation.fulfill()
+    }
     
     wait(for: [expectation], timeout: 3)
-    
-    let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
   }
 
   func test_fetchWeatherInfo_cacheTest1() throws {
     let cityName = "Leeds"
     
-    let expectation = self.expectation(description: "delegate method has been called")
-    delegate.weatherInfoBusinessLogicDidFetchTestCallback = {
-      let lastForecast = self.delegate.periodicWeatherForecasts.last
-      if
-        lastForecast?.periods[0].iconData != nil &&
-        lastForecast?.periods[1].iconData != nil &&
-        lastForecast?.periods[2].iconData != nil
-      {
-        expectation.fulfill()
-      }
-    }
+    let expectation = self.expectation(description: "async stream has finished")
     
     mockWeatherDataProvider.setupWithForcastPreriodsWithIdenticalIcons()
     
-    weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
+    Task {
+      let forecastStream = weatherInfoBusinessLogic.fetchWeatherForecast(cityName: cityName)
+      var lastForecast: PeriodicWeatherForecast? = nil
+      for try await forecast in forecastStream {
+        lastForecast = forecast
+      }
+      
+      XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+      XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
+      XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
+      
+      mockWeatherDataProvider.assertIconRequest(count: 2)
+      
+      expectation.fulfill()
+    }
     
     wait(for: [expectation], timeout: 3)
-    
-    let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
-    XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
-    
-    mockWeatherDataProvider.assertIconRequest(count: 2)
   }
 
   func test_fetchWeatherInfo_cacheTest2() async throws {
@@ -107,46 +97,25 @@ class WeatherInfoBusinessLogicTests: XCTestCase {
 
     let expectation = self.expectation(description: "delegate method has been called")
     expectation.assertForOverFulfill = false
-    delegate.weatherInfoBusinessLogicDidFetchTestCallback = {
-      let lastForecast = self.delegate.periodicWeatherForecasts.last
-      if
-        lastForecast?.periods[0].iconData != nil &&
-        lastForecast?.periods[1].iconData != nil &&
-        lastForecast?.periods[2].iconData != nil
-      {
-        expectation.fulfill()
-      }
-    }
     
     mockWeatherDataProvider.setupWithForcastPreriodsWithIdenticalIcons()
 
-    weatherInfoBusinessLogic.fetchWeatherInfo(cityName: cityName)
+    Task {
+      let forecastStream = weatherInfoBusinessLogic.fetchWeatherForecast(cityName: cityName)
+      var lastForecast: PeriodicWeatherForecast? = nil
+      for try await forecast in forecastStream {
+        lastForecast = forecast
+      }
+
+      XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
+      XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
+      XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
+      
+      mockWeatherDataProvider.assertIconRequest(count: 0)
+
+      expectation.fulfill()
+    }
     
     await fulfillment(of: [expectation], timeout: 3)
-    
-    let lastForecast = self.delegate.periodicWeatherForecasts.last
-    XCTAssertEqual(lastForecast?.periods[0].iconData, mockWeatherDataProvider.testImageData1)
-    XCTAssertEqual(lastForecast?.periods[1].iconData, mockWeatherDataProvider.testImageData2)
-    XCTAssertEqual(lastForecast?.periods[2].iconData, mockWeatherDataProvider.testImageData2)
-    mockWeatherDataProvider.assertIconRequest(count: 0)
-  }
-
-}
-
-class WeatherInfoBusinessLogicDelegateTestImpl: WeatherInfoBusinessLogicDelegate {
-  
-  var periodicWeatherForecasts: [PeriodicWeatherForecast] = []
-  var weatherInfoBusinessLogicDidFetchTestCallback: () -> Void = {}
-  func weatherInfoBusinessLogicDidFetch(periodicWeatherForecast: PeriodicWeatherForecast) {
-    periodicWeatherForecasts.append(periodicWeatherForecast)
-    weatherInfoBusinessLogicDidFetchTestCallback()
-  }
-  
-  var errors: [Error] = []
-  var weatherInfoBusinessLogicErrorTestCallback: () -> Void = {}
-  func weatherInfoBusinessLogicError(_ error: Error) {
-    errors.append(error)
-    weatherInfoBusinessLogicErrorTestCallback()
   }
 }
-

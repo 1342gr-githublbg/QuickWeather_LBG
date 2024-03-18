@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 class Coordinator {
 
@@ -23,7 +24,7 @@ class Coordinator {
     UIStoryboard(name: Constants.mainStoryboardName, bundle: Bundle.main)
   }()
 
-  private func weatherInfoBusinessLogic(useLocalFiles: Bool) -> WeatherInfoBusinessLogic {
+  private func interactorFactory(useLocalFiles: Bool) -> InteractorFactory {
     let openWeatherMapAPIDataProvider = OpenWeatherMapAPIDataProvider(
       restDataProvider: RestDataProviderImpl(
         urlSessionWrapper: useLocalFiles ? LocalSessionWrapperImpl() : URLSessionWrapperImpl()
@@ -31,7 +32,7 @@ class Coordinator {
       apiKey: Constants.apiKey,
       iconMultiplier: findIconMultiplier()
     )
-    return WeatherInfoBusinessLogicImplementation(
+    return InteractorFactory(
       weatherDataProvider: openWeatherMapAPIDataProvider,
       iconCache: useLocalFiles ? IconCache() : iconCache
     )
@@ -48,25 +49,16 @@ class Coordinator {
 
 extension Coordinator: CitySelectorTableViewControllerDelegate {
   func createWeatherInfoScreen(cityName: String) -> UIViewController {
-    guard
-      let viewController  = mainStoryBoard.instantiateViewController(
-        withIdentifier: Constants.weatherInfoScreenViewControllerId
-      ) as? WeatherInfoViewController
-    else {
-      fatalError("Could not create WeatherInfoViewController")
-    }
     
     // For test purposes we are reading files from the bundle if the name of the city
     // is London (local)
     let useLocalFiles = cityName == "London (local)"
     
-    viewController.viewModel = WeatherInfoViewModel(
-      weatherInfoBusinessLogic: weatherInfoBusinessLogic(
-        useLocalFiles: useLocalFiles
-      ),
+    let presenter = WeatherInfoPresenterImpl(
+      weatherInfoInteractor: interactorFactory(useLocalFiles: useLocalFiles).createWeatherInfoInteractor(),
       cityName: cityName
     )
-    return viewController
+    return UIHostingController(rootView: WeatherInfoScreen(presenter: presenter))
   }
 }
 

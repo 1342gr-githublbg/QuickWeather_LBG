@@ -8,7 +8,11 @@
 
 import Foundation
 
-/// List of weather forecasts with each item of the list containing meteorologic data for a certain 
+enum WeatherForecastError: Error {
+  case recoverableError(underlyingErrors: [Error])
+}
+
+/// List of weather forecasts with each item of the list containing meteorologic data for a certain
 /// point in time. The items are usually equally spaced in time. The time interval between can
 /// be eg. 3 hours.
 public struct PeriodicWeatherForecast {
@@ -30,28 +34,6 @@ struct WeatherForecastPeriod {
     self.date = date
     self.iconIdentifier = iconIdentifier
   }
-}
-
-// MARK: -
-
-/// Provides weather forecast data including icons.
-public protocol WeatherInfoBusinessLogic: AnyObject {
-  var delegate: WeatherInfoBusinessLogicDelegate? { get set }
-
-  /// Call this when a new weather forecast is required.
-  /// - Parameter cityName: The city for which the forecast is required.
-  func fetchWeatherInfo(cityName: String)
-}
-
-public protocol WeatherInfoBusinessLogicDelegate: AnyObject {
-
-  /// Called when a new forecast is ready.
-  /// - Parameter periodicWeatherForecast: The weather forecast.
-  func weatherInfoBusinessLogicDidFetch(periodicWeatherForecast: PeriodicWeatherForecast)
-
-  /// Called if an error occurs.
-  /// - Parameter error: The error.
-  func weatherInfoBusinessLogicError(_ error: Error)
 }
 
 // MARK: -
